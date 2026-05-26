@@ -38,6 +38,7 @@ export default function OrdersPage() {
   const { user, loading: authLoading, login, isLoggedIn } = useLineAuth()
   const { data: orders, loading: ordersLoading, error, refetch } = useOrders(user?.userId)
   const [cancellingOrderId, setCancellingOrderId] = useState(null)
+  const [expandedOrderId, setExpandedOrderId] = useState(null)
 
   const handleCancelOrder = async (orderId) => {
     if (!confirm('คุณต้องการยกเลิกคำสั่งซื้อนี้หรือไม่?')) return
@@ -156,33 +157,89 @@ export default function OrdersPage() {
                 {getStatusBadge(order.status)}
               </div>
 
-              <div className="p-4">
+<div className="p-4">
                 {order.order_items?.length > 0 ? (
-                  <div className="space-y-3">
-                    {order.order_items.map(item => (
-                      <div key={item.id} className="flex items-center gap-3">
-                        {item.products?.image_url ? (
-                          <img
-                            src={item.products.image_url}
-                            alt={item.products.name}
-                            className="w-14 h-14 object-cover rounded-xl"
-                          />
-                        ) : (
-                          <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center">
-                            <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-ink truncate">{item.products?.name || 'สินค้า'}</p>
-                          <p className="text-sm text-gray-500">
-                            จำนวน: {item.quantity} ชิ้น
-                          </p>
+                  <>
+                    {/* Summary - always visible */}
+                    <button
+                      onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                      className="w-full flex items-center justify-between gap-3 text-left hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex -space-x-2">
+                          {order.order_items.slice(0, 3).map((item, idx) => (
+                            item.products?.image_url ? (
+                              <img
+                                key={item.id}
+                                src={item.products.image_url}
+                                alt={item.products.name}
+                                className="w-10 h-10 object-cover rounded-lg border-2 border-white"
+                                style={{ zIndex: 3 - idx }}
+                              />
+                            ) : (
+                              <div
+                                key={item.id}
+                                className="w-10 h-10 bg-gray-100 rounded-lg border-2 border-white flex items-center justify-center"
+                                style={{ zIndex: 3 - idx }}
+                              >
+                                <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                              </div>
+                            )
+                          ))}
+                          {order.order_items.length > 3 && (
+                            <div className="w-10 h-10 bg-gray-200 rounded-lg border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">
+                              +{order.order_items.length - 3}
+                            </div>
+                          )}
                         </div>
+                        <span className="text-sm text-gray-600">
+                          {order.order_items.length} รายการ
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                      <svg
+                        className={`w-5 h-5 text-gray-400 transition-transform ${expandedOrderId === order.id ? 'rotate-180' : ''}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Expanded details */}
+                    {expandedOrderId === order.id && (
+                      <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+                        {order.order_items.map(item => (
+                          <div key={item.id} className="flex items-center gap-3">
+                            {item.products?.image_url ? (
+                              <img
+                                src={item.products.image_url}
+                                alt={item.products.name}
+                                className="w-14 h-14 object-cover rounded-xl"
+                              />
+                            ) : (
+                              <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center">
+                                <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-ink truncate">{item.products?.name || 'สินค้า'}</p>
+                              <p className="text-sm text-gray-500">
+                                {formatCurrency(item.price)} x {item.quantity}
+                              </p>
+                            </div>
+                            <p className="font-medium text-ink">
+                              {formatCurrency(item.price * item.quantity)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <p className="text-gray-400 text-sm">ไม่มีรายการสินค้า</p>
                 )}
