@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { supabase } from '../lib/supabase'
+import AddressSelector from '../components/sections/AddressSelector'
 
 function formatPrice(price) {
   return new Intl.NumberFormat('th-TH', {
@@ -120,6 +121,11 @@ export default function CartPage() {
         >
           ล้างตะกร้า
         </button>
+      </div>
+
+      {/* Address Selection Section */}
+      <div className="card p-6 mb-8">
+        <AddressSelector />
       </div>
 
       {/* Cart Items */}

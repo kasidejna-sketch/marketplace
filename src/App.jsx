@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { LineAuthProvider } from './context/LineAuthContext'
 import { CartProvider } from './context/CartContext'
+import { AddressProvider } from './context/AddressContext'
 import Layout from './components/layout/Layout'
 import HomePage from './pages/HomePage'
 import SearchPage from './pages/SearchPage'
@@ -15,21 +16,23 @@ export default function App() {
   return (
     <LineAuthProvider>
       <CartProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Marketplace public routes — admin routes are in a separate project */}
-            <Route path="/" element={<Layout />}>
-              <Route index element={<HomePage />} />
-              <Route path="search" element={<SearchPage />} />
-              <Route path="category/:slug" element={<CategoryPage />} />
-              <Route path="product/:id" element={<ProductPage />} />
-              <Route path="vendors" element={<VendorsPage />} />
-              <Route path="orders" element={<OrdersPage />} />
-              <Route path="cart" element={<CartPage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+        <AddressProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Marketplace public routes — admin routes are in a separate project */}
+              <Route path="/" element={<Layout />}>
+                <Route index element={<HomePage />} />
+                <Route path="search" element={<SearchPage />} />
+                <Route path="category/:slug" element={<CategoryPage />} />
+                <Route path="product/:id" element={<ProductPage />} />
+                <Route path="vendors" element={<VendorsPage />} />
+                <Route path="orders" element={<OrdersPage />} />
+                <Route path="cart" element={<CartPage />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </AddressProvider>
       </CartProvider>
     </LineAuthProvider>
   )
