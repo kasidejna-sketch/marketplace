@@ -154,6 +154,9 @@ export function useOrders(lineUserId) {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const refetch = () => setRefreshKey(prev => prev + 1)
 
   useEffect(() => {
     if (!lineUserId) {
@@ -208,9 +211,9 @@ export function useOrders(lineUserId) {
     }
     fetch()
     return () => { cancelled = true }
-  }, [lineUserId])
+  }, [lineUserId, refreshKey])
 
-  return { data, loading, error }
+  return { data, loading, error, refetch }
 }
 
 // ─── Stats (order previews) ────────────────────────────────────────────────────

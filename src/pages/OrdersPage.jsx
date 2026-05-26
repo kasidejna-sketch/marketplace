@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useLineAuth } from '../context/LineAuthContext'
 import { useOrders } from '../hooks/useData'
 import { Link } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString('th-TH', {
@@ -34,7 +36,30 @@ function getStatusBadge(status) {
 
 export default function OrdersPage() {
   const { user, loading: authLoading, login, isLoggedIn } = useLineAuth()
-  const { data: orders, loading: ordersLoading, error } = useOrders(user?.userId)
+  const { data: orders, loading: ordersLoading, error, refetch } = useOrders(user?.userId)
+  const [cancellingOrderId, setCancellingOrderId] = useState(null)
+
+  const handleCancelOrder = async (orderId) => {
+    if (!confirm('คุณต้องการยกเลิกคำสั่งซื้อนี้หรือไม่?')) return
+
+    setCancellingOrderId(orderId)
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'cancelled' })
+        .eq('id', orderId)
+
+      if (error) throw error
+      
+      // Refetch orders to update the list
+      if (refetch) refetch()
+    } catch (e) {
+      console.error('[Orders] Failed to cancel order:', e)
+      alert('ไม่สามารถยกเลิกคำสั่งซื้อได้ กรุณาลองใหม่อีกครั้ง')
+    } finally {
+      setCancellingOrderId(null)
+    }
+  }
 
   if (authLoading) {
     return (
@@ -152,12 +177,9 @@ export default function OrdersPage() {
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-ink truncate">{item.products?.name || 'สินค้า'}</p>
                           <p className="text-sm text-gray-500">
-                            {formatCurrency(item.price)} x {item.quantity}
+                            จำนวน: {item.quantity} ชิ้น
                           </p>
                         </div>
-                        <p className="font-medium text-ink">
-                          {formatCurrency(item.price * item.quantity)}
-                        </p>
                       </div>
                     ))}
                   </div>
@@ -168,7 +190,18 @@ export default function OrdersPage() {
 
               <div className="p-4 bg-gray-50 flex items-center justify-between">
                 <span className="text-gray-600">ยอดรวม</span>
-                <span className="text-lg font-bold text-brand-600">{formatCurrency(order.total || 0)}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-lg font-bold text-brand-600">{formatCurrency(order.total || 0)}</span>
+                  {order.status !== 'cancelled' && order.status !== 'delivered' && order.status !== 'shipped' && (
+                    <button
+                      onClick={() => handleCancelOrder(order.id)}
+                      disabled={cancellingOrderId === order.id}
+                      className="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {cancellingOrderId === order.id ? 'กำลังยกเลิก...' : 'ยกเลิกคำสั่งซื้อ'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
