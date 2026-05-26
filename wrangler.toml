@@ -1,0 +1,14 @@
+name = "marketplace"
+compatibility_date = "2024-09-01"
+
+# For Cloudflare Pages (static), this file is not strictly required.
+# Set these in Cloudflare Pages dashboard → Settings → Environment variables:
+#   VITE_SUPABASE_URL
+#   VITE_SUPABASE_ANON_KEY
+
+# For Cloudflare Workers (if serving SSR or edge functions):
+[vars]
+# Add non-sensitive vars here; secrets via `wrangler secret put`
+
+[site]
+bucket = "./dist"
