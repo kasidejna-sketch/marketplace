@@ -68,6 +68,18 @@ export function useProduct(id) {
   return { data, loading, error }
 }
 
+export async function getProductsByIds(productIds) {
+  if (!Array.isArray(productIds) || productIds.length === 0) {
+    return { data: [], error: null }
+  }
+
+  return supabase
+    .from('products')
+    .select('*, categories(id, name, slug)')
+    .in('id', productIds)
+    .eq('status', 'active')
+}
+
 // ─── Categories ───────────────────────────────────────────────────────────────
 
 export function useCategories() {
@@ -246,4 +258,153 @@ export function useMarketStats() {
   }, [])
 
   return { stats, loading }
+}
+
+// ─── Shared CRUD helpers (customers, customer_addresses) ─────────────────────
+
+export async function getCustomerById(customerId) {
+  if (!customerId) return { data: null, error: new Error('No customerId') }
+  return supabase.from('customers').select('*').eq('id', customerId).single()
+}
+
+export async function updateCustomerById(customerId, payload) {
+  if (!customerId) return { data: null, error: new Error('No customerId') }
+  return supabase
+    .from('customers')
+    .update({ ...payload, updated_at: new Date().toISOString() })
+    .eq('id', customerId)
+    .select()
+    .single()
+}
+
+export async function getAddresses(customerId) {
+  if (!customerId) return { data: null, error: new Error('No customerId') }
+  return supabase
+    .from('customer_addresses')
+    .select('*')
+    .eq('customer_id', customerId)
+    .order('is_default', { ascending: false })
+    .order('created_at', { ascending: false })
+}
+
+export async function createAddressForCustomer(customerId, addressData) {
+  if (!customerId) return { data: null, error: new Error('No customerId') }
+
+  // If setting default, unset others first
+  if (addressData.is_default) {
+    await supabase
+      .from('customer_addresses')
+      .update({ is_default: false })
+      .eq('customer_id', customerId)
+  }
+
+  return supabase
+    .from('customer_addresses')
+    .insert({ customer_id: customerId, ...addressData })
+    .select()
+    .single()
+}
+
+export async function updateAddressById(addressId, customerId, addressData) {
+  if (!customerId) return { data: null, error: new Error('No customerId') }
+  if (!addressId) return { data: null, error: new Error('No addressId') }
+
+  // If setting default, unset others first
+  if (addressData.is_default) {
+    await supabase
+      .from('customer_addresses')
+      .update({ is_default: false })
+      .eq('customer_id', customerId)
+      .neq('id', addressId)
+  }
+
+  return supabase
+    .from('customer_addresses')
+    .update({ ...addressData, updated_at: new Date().toISOString() })
+    .eq('id', addressId)
+    .eq('customer_id', customerId)
+    .select()
+    .single()
+}
+
+export async function deleteAddressById(addressId, customerId) {
+  if (!customerId) return { data: null, error: new Error('No customerId') }
+  if (!addressId) return { data: null, error: new Error('No addressId') }
+
+  return supabase
+    .from('customer_addresses')
+    .delete()
+    .eq('id', addressId)
+    .eq('customer_id', customerId)
+}
+
+export async function setDefaultAddressForCustomer(addressId, customerId) {
+  if (!customerId) return { data: null, error: new Error('No customerId') }
+  if (!addressId) return { data: null, error: new Error('No addressId') }
+
+  // Unset other defaults then set this one
+  await supabase
+    .from('customer_addresses')
+    .update({ is_default: false })
+    .eq('customer_id', customerId)
+
+  return supabase
+    .from('customer_addresses')
+    .update({ is_default: true, updated_at: new Date().toISOString() })
+    .eq('id', addressId)
+    .eq('customer_id', customerId)
+    .select()
+    .single()
+}
+
+export async function createOrderWithItems(customerId, items, address, options = {}) {
+  if (!customerId) return { data: null, error: new Error('No customerId') }
+  if (!items || items.length === 0) return { data: null, error: new Error('No items to order') }
+
+  const shippingAddress = address || ''
+  const shippingFee = options.shippingFee ?? 0
+  const paymentMethod = options.paymentMethod || 'checkout'
+  const notes = options.notes || null
+
+  const subtotal = items.reduce((sum, item) => sum + (item.product.price || 0) * item.quantity, 0)
+  const total = subtotal + shippingFee
+
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .insert({
+      customer_id: customerId,
+      subtotal,
+      shipping_fee: shippingFee,
+      total,
+      status: 'pending',
+      shipping_address: shippingAddress,
+      payment_method: paymentMethod,
+      payment_status: 'unpaid',
+      notes,
+    })
+    .select()
+    .single()
+
+  if (orderError) {
+    return { data: null, error: orderError }
+  }
+
+  const orderItems = items.map(item => ({
+    order_id: order.id,
+    product_id: item.product.id,
+    product_name: item.product.name,
+    quantity: item.quantity,
+    price: item.product.price,
+    total: (item.product.price || 0) * item.quantity,
+  }))
+
+  const { data: createdItems, error: itemsError } = await supabase
+    .from('order_items')
+    .insert(orderItems)
+
+  if (itemsError) {
+    return { data: null, error: itemsError }
+  }
+
+  return { data: { order, items: createdItems }, error: null }
 }

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
-import { supabase } from '../lib/supabase'
+import { useAddress } from '../context/AddressContext'
 import AddressSelector from '../components/sections/AddressSelector'
+import { createOrderWithItems, getProductsByIds } from '../hooks/useData'
 
 function formatPrice(price) {
   return new Intl.NumberFormat('th-TH', {
@@ -14,8 +15,11 @@ function formatPrice(price) {
 
 export default function CartPage() {
   const [searchParams] = useSearchParams()
-  const { items, addItem, removeItem, updateQuantity, clearCart, totalPrice, syncing } = useCart()
+  const navigate = useNavigate()
+  const { items, addItem, removeItem, updateQuantity, clearCart, totalPrice, syncing, customerId } = useCart()
+  const { selectedAddress } = useAddress()
   const [loading, setLoading] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [addedFromUrl, setAddedFromUrl] = useState(false)
 
   // Handle URL query params: ?id=1;2 or ?id=1,2 or ?id=1&id=2
@@ -48,11 +52,7 @@ export default function CartPage() {
 
       // Fetch all products at once
       const productIds = productsToAdd.map(p => p.productId)
-      const { data: products, error } = await supabase
-        .from('products')
-        .select('*, categories(id, name, slug)')
-        .in('id', productIds)
-        .eq('status', 'active')
+      const { data: products, error } = await getProductsByIds(productIds)
 
       if (error) {
         console.error('[Cart] Failed to fetch products:', error)
@@ -74,6 +74,58 @@ export default function CartPage() {
 
     addProductsFromUrl()
   }, [searchParams, addItem, addedFromUrl])
+
+  const formatShippingAddress = (address) => {
+    if (!address) return ''
+    const addressLine = [address.address_line_1, address.address_line_2].filter(Boolean).join(' ')
+    const regionLine = [address.subdistrict, address.district, address.province].filter(Boolean).join(' ')
+    return [
+      address.recipient_name,
+      address.phone,
+      addressLine,
+      regionLine,
+      address.postal_code,
+    ].filter(Boolean).join(', ')
+  }
+
+  const handleCheckout = async () => {
+    if (!customerId) {
+      alert('กรุณาเข้าสู่ระบบก่อนทำการสั่งซื้อ')
+      return
+    }
+
+    if (items.length === 0) {
+      alert('ไม่มีสินค้าในตะกร้า')
+      return
+    }
+
+    if (!selectedAddress) {
+      alert('กรุณาเลือกที่อยู่จัดส่งก่อนทำการสั่งซื้อ')
+      return
+    }
+
+    setCheckoutLoading(true)
+    try {
+      const shippingAddress = formatShippingAddress(selectedAddress)
+      const { data, error } = await createOrderWithItems(customerId, items, shippingAddress, {
+        shippingFee: 0,
+        paymentMethod: 'checkout',
+      })
+
+      if (error) {
+        throw error
+      }
+
+      await clearCart()
+      alert('สร้างคำสั่งซื้อสำเร็จ')
+      navigate('/orders')
+    } catch (e) {
+      console.error('[Cart] Checkout failed:', e)
+      alert('ไม่สามารถสร้างคำสั่งซื้อได้ กรุณาลองใหม่อีกครั้ง')
+    } finally {
+      setCheckoutLoading(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -216,9 +268,11 @@ export default function CartPage() {
           * ราคายังไม่รวมค่าจัดส่ง
         </p>
         <button
-          className="w-full py-4 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-2xl transition-colors shadow-sm hover:shadow-md"
+          onClick={handleCheckout}
+          disabled={checkoutLoading}
+          className="w-full py-4 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-2xl transition-colors shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          ดำเนินการสั่งซื้อ
+          {checkoutLoading ? 'กำลังสร้างคำสั่งซื้อ...' : 'ดำเนินการสั่งซื้อ'}
         </button>
       </div>
     </div>

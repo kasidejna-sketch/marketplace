@@ -29,9 +29,8 @@ export default function Navbar() {
   }
 
   return (
-    <header className={`sticky top-0 z-50 transition-all duration-300 ${
-      scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-100' : 'bg-transparent'
-    }`}>
+    <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-100' : 'bg-transparent'
+      }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
 
@@ -88,7 +87,7 @@ export default function Navbar() {
               </div>
             </div>
             <Link to="/vendors" className="btn-ghost">ผู้ขาย</Link>
-            
+
             {/* Cart Icon */}
             <Link to="/cart" className="btn-ghost relative">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -100,7 +99,7 @@ export default function Navbar() {
                 </span>
               )}
             </Link>
-            
+
             {/* User Menu */}
             {isLoggedIn ? (
               <div className="relative">
@@ -130,6 +129,12 @@ export default function Navbar() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                       </svg>
                       คำสั่งซื้อของฉัน
+                    </Link>
+                    <Link to="/account/edit" className="flex items-center gap-2 px-4 py-2 text-sm text-ink hover:bg-brand-50 hover:text-brand-600 transition-colors">
+                      <svg className="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" strokeLinecap="square" strokeLinejoin="round" strokeWidth="2" d="M7 19H5a1 1 0 0 1-1-1v-1a3 3 0 0 1 3-3h1m4-6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm7.441 1.559a1.907 1.907 0 0 1 0 2.698l-6.069 6.069L10 19l.674-3.372 6.07-6.07a1.907 1.907 0 0 1 2.697 0Z" />
+                      </svg>
+                      แก้ไขข้อมูลส่วนตัว
                     </Link>
                     <button
                       onClick={logout}

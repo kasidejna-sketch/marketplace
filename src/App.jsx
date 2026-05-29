@@ -10,6 +10,7 @@ import ProductPage from './pages/ProductPage'
 import VendorsPage from './pages/VendorsPage'
 import OrdersPage from './pages/OrdersPage'
 import CartPage from './pages/CartPage'
+import CustomerEditPage from './pages/CustomerEditPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
@@ -28,6 +29,7 @@ export default function App() {
                 <Route path="vendors" element={<VendorsPage />} />
                 <Route path="orders" element={<OrdersPage />} />
                 <Route path="cart" element={<CartPage />} />
+                <Route path="account/edit" element={<CustomerEditPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
             </Routes>

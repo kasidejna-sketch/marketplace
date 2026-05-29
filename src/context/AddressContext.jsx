@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { getAddresses, createAddressForCustomer, updateAddressById, deleteAddressById, setDefaultAddressForCustomer } from '../hooks/useData'
 import { useCart } from './CartContext'
 
 const AddressContext = createContext(null)
@@ -25,17 +25,12 @@ export function AddressProvider({ children }) {
 
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('customer_addresses')
-        .select('*')
-        .eq('customer_id', customerId)
-        .order('is_default', { ascending: false })
-        .order('created_at', { ascending: false })
+      const { data, error } = await getAddresses(customerId)
 
       if (error) throw error
 
       setAddresses(data || [])
-      
+
       // Auto-select default address or first address
       const defaultAddr = data?.find(a => a.is_default)
       if (defaultAddr) {
@@ -55,28 +50,12 @@ export function AddressProvider({ children }) {
 
     try {
       setLoading(true)
-      
-      // If this is set as default, unset other defaults first
-      if (addressData.is_default) {
-        await supabase
-          .from('customer_addresses')
-          .update({ is_default: false })
-          .eq('customer_id', customerId)
-      }
-
-      const { data, error } = await supabase
-        .from('customer_addresses')
-        .insert({
-          customer_id: customerId,
-          ...addressData,
-        })
-        .select()
-        .single()
+      const { data, error } = await createAddressForCustomer(customerId, addressData)
 
       if (error) throw error
 
       await loadAddresses()
-      
+
       // Auto-select newly added address
       if (data) {
         setSelectedAddressId(data.id)
@@ -96,26 +75,7 @@ export function AddressProvider({ children }) {
 
     try {
       setLoading(true)
-
-      // If this is set as default, unset other defaults first
-      if (addressData.is_default) {
-        await supabase
-          .from('customer_addresses')
-          .update({ is_default: false })
-          .eq('customer_id', customerId)
-          .neq('id', addressId)
-      }
-
-      const { data, error } = await supabase
-        .from('customer_addresses')
-        .update({
-          ...addressData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', addressId)
-        .eq('customer_id', customerId)
-        .select()
-        .single()
+      const { data, error } = await updateAddressById(addressId, customerId, addressData)
 
       if (error) throw error
 
@@ -135,16 +95,12 @@ export function AddressProvider({ children }) {
     try {
       setLoading(true)
 
-      const { error } = await supabase
-        .from('customer_addresses')
-        .delete()
-        .eq('id', addressId)
-        .eq('customer_id', customerId)
+      const { error } = await deleteAddressById(addressId, customerId)
 
       if (error) throw error
 
       await loadAddresses()
-      
+
       // If deleted address was selected, select another
       if (selectedAddressId === addressId) {
         const remaining = addresses.filter(a => a.id !== addressId)
@@ -161,8 +117,11 @@ export function AddressProvider({ children }) {
   }, [customerId, loadAddresses, selectedAddressId, addresses])
 
   const setDefaultAddress = useCallback(async (addressId) => {
-    return updateAddress(addressId, { is_default: true })
-  }, [updateAddress])
+    const res = await setDefaultAddressForCustomer(addressId, customerId)
+    if (res.error) return { success: false, error: res.error.message || res.error }
+    await loadAddresses()
+    return { success: true, data: res.data }
+  }, [customerId, loadAddresses])
 
   const selectedAddress = addresses.find(a => a.id === selectedAddressId) || null
 

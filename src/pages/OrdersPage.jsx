@@ -51,7 +51,7 @@ export default function OrdersPage() {
         .eq('id', orderId)
 
       if (error) throw error
-      
+
       // Refetch orders to update the list
       if (refetch) refetch()
     } catch (e) {
@@ -151,13 +151,13 @@ export default function OrdersPage() {
             <div key={order.id} className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
               <div className="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-sm text-gray-500">คำสั่งซื้อ #{order.order_number?.slice(0, 8) || '-'}</p>
+                  <p className="text-sm text-gray-500">คำสั่งซื้อ #{order.order_number?.slice(0, 15) || '-'}</p>
                   <p className="text-xs text-gray-400">{formatDate(order.created_at)}</p>
                 </div>
                 {getStatusBadge(order.status)}
               </div>
 
-<div className="p-4">
+              <div className="p-4">
                 {order.order_items?.length > 0 ? (
                   <>
                     {/* Summary - always visible */}
