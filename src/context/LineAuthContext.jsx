@@ -36,6 +36,7 @@ export function LineAuthProvider({ children }) {
   const login = async () => {
     setLoading(true)
     const profile = await loginWithLine()
+
     if (profile) {
       setUser({
         userId: profile.userId,

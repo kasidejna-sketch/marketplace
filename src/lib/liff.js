@@ -53,16 +53,21 @@ export async function loginWithLine() {
 export async function getLineProfile() {
   const initialized = await initLiff()
   if (!initialized) return null
-  
+
   const liffClient = await getLiff()
   if (!liffClient.isLoggedIn()) return null
 
   try {
     const profile = await liffClient.getProfile()
+    // ดึงข้อมูลจาก ID Token
+    const idToken = liffClient.getDecodedIDToken()
+    console.log('[LIFF] ID Token:', idToken)
     // Store userId in localStorage
+    console.log('[LIFF] Retrieved profile:', profile)
     localStorage.setItem('line_user_id', profile.userId)
     localStorage.setItem('line_display_name', profile.displayName)
     localStorage.setItem('line_picture_url', profile.pictureUrl || '')
+    localStorage.setItem('line_email', idToken.email || '')
     return profile
   } catch (error) {
     console.error('[LIFF] Failed to get profile:', error)
@@ -78,6 +83,7 @@ export function getStoredLineUser() {
     userId,
     displayName: localStorage.getItem('line_display_name') || '',
     pictureUrl: localStorage.getItem('line_picture_url') || '',
+    email: localStorage.getItem('line_email') || '',
   }
 }
 
@@ -85,7 +91,8 @@ export async function logoutLine() {
   localStorage.removeItem('line_user_id')
   localStorage.removeItem('line_display_name')
   localStorage.removeItem('line_picture_url')
-  
+  localStorage.removeItem('line_email')
+
   try {
     const liffClient = await getLiff()
     if (liffClient.isLoggedIn()) {

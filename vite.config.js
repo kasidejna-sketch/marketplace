@@ -14,6 +14,9 @@ export default defineConfig({
       },
     },
   },
+  server: {
+    allowedHosts: true
+  },
   // Env vars: VITE_ prefix for client-side exposure
   // Support both VITE_SUPABASE_URL and SUPABASE_URL patterns
   define: {},
