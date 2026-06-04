@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { useProduct, useProducts } from '../hooks/useData'
+import { useState, useEffect, useRef } from 'react'
+import { useParams, Link, useLocation } from 'react-router-dom'
+import { useProduct, useProducts, getProductsByIds } from '../hooks/useData'
 import { useCart } from '../context/CartContext'
 import ProductCard, { ProductSkeleton } from '../components/ui/ProductCard'
 
@@ -20,8 +20,74 @@ export default function ProductPage() {
     limit: 4,
   })
   const { addItem } = useCart()
+  const location = useLocation()
+  const processedQueryRef = useRef(false)
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
+
+  useEffect(() => {
+    if (processedQueryRef.current) return
+
+    const params = new URLSearchParams(location.search)
+    const multiParams = params.getAll('product_id')
+    const shouldAdd = params.get('addToCart') || params.get('add') || (multiParams && multiParams.length > 0)
+    if (!shouldAdd) return
+
+      ; (async () => {
+        try {
+          // If multiple product_id entries provided (format: id;qty)
+          if (multiParams && multiParams.length > 0) {
+            const pairs = multiParams
+              .map(v => {
+                const [idPart, qtyPart] = String(v).split(';')
+                const id = idPart ? idPart.trim() : null
+                const qty = parseInt(qtyPart || '1', 10) || 1
+                return { id, qty }
+              })
+              .filter(p => p.id)
+
+            // Separate ids that need fetching (exclude current page product if present)
+            const idsToFetch = pairs
+              .map(p => p.id)
+              .filter(id => String(product?.id) !== String(id))
+
+            let fetched = []
+            if (idsToFetch.length > 0) {
+              const { data: rows, error } = await getProductsByIds(idsToFetch)
+              if (!error && rows) fetched = rows
+            }
+
+            for (const p of pairs) {
+              const prodObj = (product && String(product.id) === String(p.id))
+                ? product
+                : fetched.find(r => String(r.id) === String(p.id))
+
+              if (!prodObj) continue
+              if ((prodObj.stock ?? 0) <= 0) continue
+
+              const addQty = Math.max(1, Math.min(p.qty, prodObj.stock ?? p.qty))
+              await addItem(prodObj, addQty)
+            }
+
+            setAdded(true)
+            setTimeout(() => setAdded(false), 2000)
+            return
+          }
+
+          // Fallback: single product page add (supports ?addToCart or ?add with qty)
+          if (!product) return
+          const qty = parseInt(params.get('qty') || params.get('quantity') || '1', 10) || 1
+          const addQuantity = Math.max(1, Math.min(qty, product.stock || 1))
+          if ((product.stock ?? 0) > 0) {
+            await addItem(product, addQuantity)
+            setAdded(true)
+            setTimeout(() => setAdded(false), 2000)
+          }
+        } finally {
+          processedQueryRef.current = true
+        }
+      })()
+  }, [product, location.search, addItem])
 
   if (loading) {
     return (
@@ -186,13 +252,12 @@ export default function ProductPage() {
               <button
                 onClick={handleAddToCart}
                 disabled={!inStock}
-                className={`flex-1 py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
-                  added
+                className={`flex-1 py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${added
                     ? 'bg-green-500 text-white'
                     : inStock
-                    ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-sm hover:shadow-md active:scale-95'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                }`}
+                      ? 'bg-brand-500 hover:bg-brand-600 text-white shadow-sm hover:shadow-md active:scale-95'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  }`}
               >
                 {added ? (
                   <>
@@ -223,16 +288,18 @@ export default function ProductPage() {
       </div>
 
       {/* Related products */}
-      {related.filter(p => String(p.id) !== id).length > 0 && (
-        <div>
-          <h2 className="font-display text-xl font-bold text-ink mb-6">สินค้าที่เกี่ยวข้อง</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {related.filter(p => String(p.id) !== id).slice(0, 4).map(p => (
-              <ProductCard key={p.id} product={p} />
-            ))}
+      {
+        related.filter(p => String(p.id) !== id).length > 0 && (
+          <div>
+            <h2 className="font-display text-xl font-bold text-ink mb-6">สินค้าที่เกี่ยวข้อง</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {related.filter(p => String(p.id) !== id).slice(0, 4).map(p => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   )
 }

@@ -1,4 +1,5 @@
 const LIFF_ID = import.meta.env.VITE_LIFF_ID || ''
+import { supabase, supabaseUrl } from '../lib/supabase'
 
 let liff = null
 let isInitialized = false
@@ -60,8 +61,30 @@ export async function getLineProfile() {
   try {
     const profile = await liffClient.getProfile()
     // ดึงข้อมูลจาก ID Token
-    const idToken = liffClient.getDecodedIDToken()
-    console.log('[LIFF] ID Token:', idToken)
+    const idToken = liffClient.getIDToken()
+    const res = await fetch(
+      `${supabaseUrl}/functions/v1/line-login`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          idToken,
+        }),
+      }
+    )
+
+    const data = await res.json()
+    // LOGIN SUPABASE
+    const { data: authData, error } =
+      await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      })
+
+    console.log(authData.session)
+
     // Store userId in localStorage
     console.log('[LIFF] Retrieved profile:', profile)
     localStorage.setItem('line_user_id', profile.userId)

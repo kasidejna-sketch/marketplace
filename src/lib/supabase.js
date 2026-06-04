@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 // Support both VITE_ prefixed (Vite standard) and plain env vars
 // For Cloudflare Workers, env vars are injected at build time via wrangler
 // For AWS Amplify, use VITE_ prefix in Amplify console environment variables
-const supabaseUrl =
+export const supabaseUrl =
   import.meta.env.VITE_SUPABASE_URL ||
   import.meta.env.SUPABASE_URL ||
   ''
@@ -21,6 +21,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false, // public marketplace — no auth needed
+    persistSession: true, // public marketplace — no auth needed
+    storage: localStorage, // Use localStorage if token exists, otherwise fallback to default (in-memory)
   },
 })
